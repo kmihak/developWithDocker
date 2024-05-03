@@ -27,34 +27,26 @@ Use existing installation on one of the servers: **bea.zel.lo, or abacus1.zel.lo
 for group permissions. For complete server names checkout the department wiki pages http://zel.irb.hr/wiki/tutorials:supercomputers.
 
 ## Building a Docker Image
-Docker image is the first step to create your fully reproducible environment. Basic setup is by using `Dockerfile`. 
-   - Dockerfile contains procedure/code to build a docker image, minimal dockerfile example
-   ```
-FROM python:3.8.18-slim-bullseye
-# Set the working directory in the container
-WORKDIR /workspace
-# Linux dependencies
-RUN apt-get update && \
-  apt-get install -y build-essential sudo unzip bzip2
-# Copy the Python script into the container
-COPY . /workspace
-# update and install packages in python
-RUN pip install --upgrade pip && \
-  pip install -r req.txt
-```
-
    - Examples of Dockerfile files dependent on your preferences are in this GitHub repository.
    ![create virtual image](https://github.com/kmihak/developWithDocker/assets/64592696/0bdf12e7-08c6-48e3-b0a2-f9da519d3699)
 
    *At what point are docker and singularity commands applied and what do they create.*
    
-Docker images are located online on [docker hub](https://hub.docker.com/r/pytorch/pytorch/tags) repository. After logging in, you can upload your image as well. In order to create an image we use **Dockerfile** and a set of standard commands. Understanding the **Dockerfile** syntax and commands:
+Docker images are located online on [docker hub](https://hub.docker.com/r/pytorch/pytorch/tags) repository. After logging in, you can upload your image as well. In order to create an image we use **Dockerfile** and a set of standard commands.
+Docker image is the first step to create your fully reproducible environment. Basic setup is by using `Dockerfile`. 
+   - Dockerfile contains procedure/code to build a docker image, minimal dockerfile examples are in repository,
+   - Understanding the **Dockerfile** syntax and commands:
 ```
 # # is the comment character
 
 # FROM: Specifies the base image for the Dockerfile.
 FROM <image>[:<tag>] [AS <name>] # e.g. rstudio/rstudio-server-pro:1.2.5033-1, or pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
 # cuda > 11.3 doesnt work on srce based on documentation (check) and cuda > 11.6 doesn't work on orthus
+
+# ARG: Arguments from the "docker build ..." command
+# Or some other arguments you need for Dockerfile build
+ARG USER_ID
+ARG GROUP_ID
 
 # RUN: Executes commands in the Docker image. Makes image snapshot.
 RUN <command>
@@ -77,14 +69,40 @@ ENV <key> <value>
 ```
 
 ### Basic Docker Commands
-   1. docker build: `docker build -t <ime>:<naziv> --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .`, creates builds the image from Dockerfile,
-   2. docker run: `docker run -it --rm <ime>:<naziv> /bin/bash`, creates a container ~ virtual machine, opens linux terminal, 
-   3. docker images: `docker images` - shows table of pulled and built images,
-   4. docker ps: `docker ps` - shows table of active containers (inactive containers are dangling somewhere within the system),
-   5. docker exec: `docker exec -u 0 -g 0 -it rm <container_id_or_name> bash`, existing container management,
-   6. docker pull: `docker pull pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime`, download image to docker,
-   7. ...
+   1. `docker build ...` --> change <name>:<tag> (<ime>:<verzija>) to something to make the image recognizable, e.g. smith/gpu:ver1, creates builds the image from Dockerfile:
+   ```
+   docker build -t <ime>:<verzija> --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .
+   ```
+   2. `docker run ...` --> creates a container ~ virtual machine, opens linux terminal: 
+   ```
+   docker run -it --rm --user $(id -u):$(id -g) <ime>:<verzija> /bin/bash
+   ```
+   3. `docker exec ...` existing container terminal: 
+   ```
+   docker exec -u $(id -u) -g $(id -g) -it rm <container_id_or_name> bash
+   ```
+
+Flags used for this initial example were in `docker build ...` flags used:
+- `-t` tag the image with <name>:<tag> in the `docker images` table the columns REPOSITORY will display <name> and TAG will display <tag>, use something to recognize your images. 
+- `--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)` send your server user id and group id to initialized arguments of the Dockerfile.
+
+Flags used for this initial example were in `docker run ...` flags used:
+- `-it` This combines two flags: -i (interactive) and -t (pseudo-TTY). It allows you to interact with the container through the terminal.
+- `--rm` This flag tells Docker to automatically remove the container when it exits. It helps in cleaning up after the container stops running, avoiding accumulation of stopped containers.
+- `--user $(id -u):$(id -g)` This sets the user inside the container to the same user and group as the user running the docker run command on the host system. `\$(id -u)` returns the user ID of the current user, and `\$(id -g)` returns the group ID of the current user.
+
+### Navigating the docker images and containers
+   1. docker images: `docker images` - shows table of pulled and built images,
+   2. docker ps: `docker ps` - shows table of active containers (inactive containers are dangling somewhere within the system),
+
+   3. docker pull download image to docker, the downloaded image will show in table `docker images` with columns REPOSITORY will display name `pytorch/pytorch` and column TAG will display `1.13.1-cuda11.6-cudnn8-runtime`: 
+   ```
+   docker pull pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime
+   ```
+   4. `docker rmi` remove docker image
+   5. ...
    
+
 ![docker images](https://github.com/kmihak/developWithDocker/assets/64592696/af0b85ee-e6ff-4cfa-934b-0e861feb91f6)
 
 *Show docker images from **build** command using: `docker images`.*
@@ -95,9 +113,7 @@ ENV <key> <value>
 
    - Some more basic operations with images & containers:
    1. **Delete Image Command:**
-      - Removes a Docker image forcefully: `docker image rm -f <f8fcad3b680c>`
-      - Resumes execution of a stopped Docker container: `docker start <container-name/ID>`
-      - docker stop container `docker stop <container-name/ID>`
+      - Removes a Docker image forcefully: `docker image rm -f f8fcad3b680c`
    
    2. **Tagging Image with Custom Repository and Tag:**
       - Description: Tags an existing Docker image with a custom repository name and tag.
@@ -108,26 +124,37 @@ ENV <key> <value>
 
    ### Building a Simple Docker Image
    Step-by-step guide to creating a basic docker image.
-   - Step 1: create directory: <your_path/start-vm-project/>
+   - Step 1: create directory: `/your_path/start-vm-project/`
    - Step 2: copy Dockerfile, requirements.txt, scriptToRun.py to directory.
-   - Step 3: build the image `docker build -t <ime>:<naziv> --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .`
+   - Step 3: build the image 
+   ```
+   docker build -t ime:naziv --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .
+   ```
 
    ### Run Docker Image
    - Step 4 **What do i need?**:
-      - a) virtual mounts: `-v <~/home/directory>:</remoteHome/workingDirectory>`,
-      - b) GPUs to use for computing `--gpus all` vs `--gpus '"device=0,2"'`,
-      - c) what is my working directory `-w <home/user/set/working/dir/in/container>`,
+      - a) virtual mounts: `-v ~/home/user/directory:/workingDirectory`, /workingDirectory is the directory name you created in the Dockerfile with command `WORKDIR`,
+      - b) GPUs to use for computing `--gpus all` vs `--gpus '"device=0,2"'` - select which gpus to use and how many you need,
+      - c) what is my working directory `-w /set/working/dir/in/container`, this command is not necessary if the `WORKDIR` was specified in the Dockerfile, only if you want to change the working directory but they you can and will encounter user premissions errors,
       - d) shared memory directory is limited to 64MB, but we increase this size since my application depends on this shared memory to 8GB `--shm-size=8g`,
-      - e) port forwarding between container and "host machine" `-p 8888:8888`,
+      - e) port forwarding between container and "host machine":"virtual machine" `-p 8888:8888`,
       - f) ...
-   - Step 5: JupyterLab in browser: 
+   - Step 5: JupyterLab in browser without cuda support: 
    ```
-docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/homeWorkDirectory:/home/user/remoteWorkDirectory -w /home/user/remoteWorkDirectory <ime>:<tag> jupyter lab --no-browser --ip=0.0.0.0 --port=8888
+docker run -it --rm --user $(id -u):$(id -g) --group-add users -p 8888:8888 -v ~/home/user/WorkDirectory:/remoteWorkDirectory -w /remoteWorkDirectory ime:tag jupyter lab --no-browser --ip=0.0.0.0 --port=8888
 ```
-   click on jupyter link to open jupyter lab and develop. ! If jupyter lab is on a server change `127.0.0.1` to `<server ip>` or `server name`.
-   - Step 5': Run some script that needs all these flags:
+Jupyter lab with cuda support for docker images that have cuda installed.
+   ```
+docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/homeWorkDirectory:/home/user/remoteWorkDirectory -w /home/user/remoteWorkDirectory ime:tag jupyter lab --no-browser --ip=0.0.0.0 --port=8888
 ```
-docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/homeWorkDirectory:/home/user/remoteWorkDirectory -w /home/user/remoteWorkDirectory <ime>:<tag> python <script_based_flags> my_script.py
+   click on jupyter link to open jupyter lab and develop. ! If jupyter lab is on a server change `127.0.0.1` to `<server ip>` or `server name`. 
+   
+   Flags at the end are jupyter flags: `--no-browser --ip=0.0.0.0 --port=8888` in order: do not open a browser there is no browser on the host machine, use the defalut host ip and the port for jupyter lab is the port 8888 that is forwarded from the host 8888 port to the wirtual machine.
+
+
+   - Step 5': Run some script that needs all these flags instead of jupyter lab we can use the python command or r depending on your installed environment:
+```
+docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/homeWorkDirectory:/home/user/remoteWorkDirectory -w /home/user/remoteWorkDirectory ime:tag python -script_based_flags my_script.py
 ```
 
 ## Docker Image and Singularity
