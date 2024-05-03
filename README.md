@@ -139,7 +139,8 @@ Flags used for this initial example were in `docker run ...` flags used:
       - c) what is my working directory `-w /set/working/dir/in/container`, this command is not necessary if the `WORKDIR` was specified in the Dockerfile, only if you want to change the working directory but they you can and will encounter user premissions errors,
       - d) shared memory directory is limited to 64MB, but we increase this size since my application depends on this shared memory to 8GB `--shm-size=8g`,
       - e) port forwarding between container and "host machine":"virtual machine" `-p 8888:8888`,
-      - f) ...
+      - f) `--group-add users`: Add the host's users group to the container's group list. This allows the container to access resources or permissions assigned to the users group on the host.
+      - g) ...
    - Step 5: JupyterLab in browser without cuda support: 
    ```
 docker run -it --rm --user $(id -u):$(id -g) --group-add users -p 8888:8888 -v ~/home/user/WorkDirectory:/remoteWorkDirectory -w /remoteWorkDirectory ime:tag jupyter lab --no-browser --ip=0.0.0.0 --port=8888
@@ -158,7 +159,28 @@ docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-
 docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/homeWorkDirectory:/home/user/remoteWorkDirectory -w /home/user/remoteWorkDirectory ime:tag python -script_based_flags my_script.py
 ```
 
+### Development in container
+
+```
+Project
+│   README.md
+│
+├───start-docker
+│       Dockerfile
+|       req.txt
+│
+├───data
+|     |     some_data.txt
+|     ├─── ...
+│
+├───code
+|      |     script.py
+|      ├─── ...
+```
+
+
 ## Docker Image and Singularity
+
 ### Introduction to Lab Resources and Additional Guides
 Singularity (S) and docker images are compatible to create a Singularity image (.simg) 
 just save your existing docker image and push it to the Singularity server. 
@@ -171,18 +193,39 @@ Singularity basic commands and description: https://wiki.srce.hr/display/RKI/Sin
    
    *How to go about creating docker image and deploy it on the Singularity server.*
    
-After you are satisfied with docker image, save docker image to file: `docker save -o <pathToFile/py-min.tar> <fe35d0fd6c24>`
+After you are satisfied with docker image, save docker image to file: 
+```
+docker save -o pathToFile/py-min.tar fe35d0fd6c24
+```
 
-Sync image to the server with singularity: ```
-rsync -avP <path/to_directory/img-min.tar> <username>@<server>:/home/user/path/to_directory/```
-, enter your password. Use gzip for large files for transfer between slow connections: `gzip img_min.tar`,  `rsync -avP <path/to_directory/py-min.tar.gz> <user>@<server>:/home/user/path/to_directory/`, or post your docker image to [docker hub](https://hub.docker.com/r/pytorch/pytorch/tags) as well and create the container form there. 
+Sync image to the server with singularity: 
+```
+rsync -avP <path/to_directory/img-min.tar> <username>@<server>:/home/user/path/to_directory/
+```
+Use gzip for large files for transfer between slow connections: `gzip img_min.tar`,  `rsync -avP <path/to_directory/py-min.tar.gz> <user>@<server>:/home/user/path/to_directory/`, or post your docker image to [docker hub](https://hub.docker.com/r/pytorch/pytorch/tags) as well and create the container form there. 
 
-   1. Build the Singularity Container from existing docker image: `singularity build <singularity_container.simg> docker-archive://<img-min.tar>`
-      - Replace <img-min.tar> with the desired name for your docker image file. This command does not require sudo to create .simg singularity image.
-   2. **Use the proposed way of job scheduling when running the scripts in the server environment,** **https://wiki.srce.hr/display/RKI/Pokretanje+i+upravljanje+poslovima.** Run the Singularity Container: `singularity exec --nv <singularity_container.simg> python helloworld.py`
-   Replace "path/to/your_container.simg" with the path to your Singularity container file and `your_script.py` with the name of your Python script. `--nv` flag gives singularity premissions to cuda. `singularity exec --nv your_container.simg python -c your_script.py`
+   1. Build the Singularity Container from existing docker image. Replace <img-min.tar> with the desired name for your docker image file. This command does not require sudo to create .simg singularity image: 
+   ```
+   singularity build singularity_container.simg docker-archive://<img-min.tar>
+   ```
 
-Using a Singularity Definition File (e.g., `singularityfile.def`), pull the image from dockerhub repository:
+   2. **Use the proposed way of job scheduling when running the scripts in the server environment,** **https://wiki.srce.hr/display/RKI/Pokretanje+i+upravljanje+poslovima.** 
+   
+   3. Run the Singularity Container. Follow the rules of [job scheduling srce](https://wiki.srce.hr/display/RKI/Pokretanje+i+upravljanje+poslovima) or [job scheduling orthus](https://hybridscale.github.io/orthus/running) both HPCs use SGE (Sons of Grid Engine) and execute some script from the created .simg: 
+
+```
+singularity exec --nv sPyCuda.simg python cnn_mnist.py
+```
+or  
+```
+singularity exec --nv /path/to/your_container.simg python helloworld.py
+```
+   Replace "/path/to/your_container.simg" with the path to your Singularity container file and `your_script.py` with the name of your Python script. 
+   
+   `--nv` flag gives singularity premissions to cuda.
+
+Using a Singularity Definition File (e.g., `singularityfile.def`, similar to Dockerfile only has different syntax), pull the image from dockerhub repository:
+
    ```
    Bootstrap: docker
    From: name:tag # e.g. rstudio/rstudio-server-pro:1.2.5033-1, or r-base:4.3.3, or pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel(doesnt work on orthus or srce)
@@ -191,7 +234,12 @@ Using a Singularity Definition File (e.g., `singularityfile.def`), pull the imag
        # Execute your script inside the container
        python your_script.py
    ```
-Create the .simg: `singularity build sPyCuda.simg singularityfile.def`. Using singularityfile.def requires singularity group priveleges (sudo). Again follow the rules of [job scheduling srce](https://wiki.srce.hr/display/RKI/Pokretanje+i+upravljanje+poslovima) or [job scheduling orthus](https://hybridscale.github.io/orthus/running) both HPCs use SGE (Sons of Grid Engine) and execute some script from the created .simg: `singularity exec --nv <sPyCuda.simg> python <cnn_mnist.py>`
+
+Create the .simg: 
+```
+singularity build sPyCuda.simg singularityfile.def
+```
+Using singularityfile.def requires singularity group priveleges (sudo). 
 
 ### Jobs to Son of Grid Engine SGE
 Detailed descriptions of job scheduling for SGE in Croatian, how to run jobs with [CRO Son of Grid Engine](https://wiki.srce.hr/display/RKI/Pokretanje+i+upravljanje+poslovima) and in English, how to run jobs with [ENG Son of Grid Engine](https://hybridscale.github.io/orthus/running)
