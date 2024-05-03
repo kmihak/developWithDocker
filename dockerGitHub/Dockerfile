@@ -1,7 +1,7 @@
 FROM python:3.8.18-slim-bullseye
 # FROM --platform=linux/amd64 vsc-start-docker-s2ocr-py-4161eff9e9f4f737c0d37587746d58c49fffa27ff9c25136db0a55ea680c9b53-uid:latest
-ARG USER_ID=1
-ARG GROUP_ID=1
+ARG USER_ID
+ARG GROUP_ID
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -20,9 +20,10 @@ COPY . /workspace
 
 RUN pip install --upgrade pip && \
   pip install -r requirements.txt
-RUN echo $(ls -a)
+
 RUN git clone --depth=1 https://github.com/allenai/s2orc-doc2json.git ocr/
 
+# Install the cloned repo if necessary
 CMD python ocr/setup.py develop
 
 RUN useradd vscode -u $USER_ID -g $GROUP_ID -m -s /bin/bash

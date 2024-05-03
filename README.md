@@ -35,6 +35,7 @@ for group permissions. For complete server names checkout the department wiki pa
 Docker images are located online on [docker hub](https://hub.docker.com/r/pytorch/pytorch/tags) repository. After logging in, you can upload your image as well. In order to create an image we use **Dockerfile** and a set of standard commands.
 Docker image is the first step to create your fully reproducible environment. Basic setup is by using `Dockerfile`. 
    - Dockerfile contains procedure/code to build a docker image, minimal dockerfile examples are in repository,
+   - cuda > 11.3 doesnt work on srce based on documentation (check) and cuda > 11.6 doesn't work on orthus our 
    - Understanding the **Dockerfile** syntax and commands:
 ```
 # # is the comment character

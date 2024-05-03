@@ -3,8 +3,8 @@ FROM python:3.8.18-slim-bullseye
 # FROM --platform=linux/amd64 IME:TAG
 
 # Set a default value for the UID build argument
-ARG USER_ID=1
-ARG GROUP_ID=1
+ARG USER_ID
+ARG GROUP_ID
 # Set the working directory in the container
 WORKDIR /workspace
 
@@ -16,7 +16,6 @@ RUN apt-get update && \
   # apt-get install -y gcc g++ make && \
   # apt-get install -y pkg-config && \
   # apt-get install -y software-properties-common && \
-  # apt-get install -y openjdk-11-jre-headless && \
   rm -rf /var/lib/apt/lists/*
   
 # Copy the Python script into the container

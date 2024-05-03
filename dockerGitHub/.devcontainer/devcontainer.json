@@ -31,5 +31,6 @@
   "appPort": [
     "8700:8700"],
   "workspaceFolder": "/workspace",
-  "workspaceMount": "source=/home/<user>/corpus/data,target=/workspace/data,type=bind,consistency=cached"
+  // What to mount if we arent developing any code we can mount only data folder from our host machine to the virtual machine
+  "workspaceMount": "source=/home/user/corpus/data,target=/workspace/data,type=bind,consistency=cached"
   } 

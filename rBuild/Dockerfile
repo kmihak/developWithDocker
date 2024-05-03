@@ -5,8 +5,8 @@ FROM r-base
 # FROM --platform=linux/amd64 <IME>:<TAG>
 
 # user arguments 1000 could be root user in linux based systems
-ARG USER_ID=1
-ARG GROUP_ID=1
+ARG USER_ID
+ARG GROUP_ID
 
 # Set the working directory in the container
 WORKDIR /workspace
