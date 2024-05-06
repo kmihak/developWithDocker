@@ -136,48 +136,55 @@ Flags used for this initial example were in `docker run ...` flags used:
    - Step 4 **What do i need?**:
       - a) virtual mounts: `-v ~/home/user/directory:/workingDirectory`, /workingDirectory is the directory name you created in the Dockerfile with command `WORKDIR`,
       - b) GPUs to use for computing `--gpus all` vs `--gpus '"device=0,2"'` - select which gpus to use and how many you need,
-      - c) what is my working directory `-w /set/working/dir/in/container`, this command is not necessary if the `WORKDIR` was specified in the Dockerfile, only if you want to change the working directory but they you can and will encounter user premissions errors,
+      - c) what is my working directory `-w /set/working/dir/in/container`, this command is not necessary if the `WORKDIR` was specified in the Dockerfile, only if you want to change the working directory but then you can encounter user premissions errors,
       - d) shared memory directory is limited to 64MB, but we increase this size since my application depends on this shared memory to 8GB `--shm-size=8g`,
-      - e) port forwarding between container and "host machine":"virtual machine" `-p 8888:8888`,
+      - e) port forwarding between container and "host machine":"virtual machine" `-p 8888:8888`, meaning that host machine port will be forwarded to the container virtual machine port.
       - f) `--group-add users`: Add the host's users group to the container's group list. This allows the container to access resources or permissions assigned to the users group on the host.
       - g) ...
    - Step 5: JupyterLab in browser without cuda support: 
    ```
-docker run -it --rm --user $(id -u):$(id -g) --group-add users -p 8888:8888 -v ~/home/user/WorkDirectory:/remoteWorkDirectory -w /remoteWorkDirectory ime:tag jupyter lab --no-browser --ip=0.0.0.0 --port=8888
+docker run -it --rm --user $(id -u):$(id -g) --group-add users -p 8888:8888 -v /home/user/WorkDirectory:/remoteWorkDirectory -w /remoteWorkDirectory ime:tag jupyter lab --no-browser --ip=0.0.0.0 --port=8888
 ```
 Jupyter lab with cuda support for docker images that have cuda installed.
    ```
-docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/homeWorkDirectory:/home/user/remoteWorkDirectory -w /home/user/remoteWorkDirectory ime:tag jupyter lab --no-browser --ip=0.0.0.0 --port=8888
+docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/home/user/homeWorkDirectory:/remoteWorkDirectory -w /remoteWorkDirectory ime:tag jupyter lab --no-browser --ip=0.0.0.0 --port=8888
 ```
-   click on jupyter link to open jupyter lab and develop. ! If jupyter lab is on a server change `127.0.0.1` to `<server ip>` or `server name`. 
-   
-   Flags at the end are jupyter flags: `--no-browser --ip=0.0.0.0 --port=8888` in order: do not open a browser there is no browser on the host machine, use the defalut host ip and the port for jupyter lab is the port 8888 that is forwarded from the host 8888 port to the wirtual machine.
 
+Click on jupyter link to open jupyter lab and develop. ! If jupyter lab is on a server change `127.0.0.1` to `<server ip>` or `server name`. Flags at the end are jupyter flags: `--no-browser --ip=0.0.0.0 --port=8888` in order: do not open a browser there is no browser on the host machine, use the defalut host ip and the port for jupyter lab is the port 8888 that is forwarded from the host 8888 port to the wirtual machine.
 
    - Step 5': Run some script that needs all these flags instead of jupyter lab we can use the python command or r depending on your installed environment:
+
 ```
-docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/homeWorkDirectory:/home/user/remoteWorkDirectory -w /home/user/remoteWorkDirectory ime:tag python -script_based_flags my_script.py
+docker run -it --rm --gpus all --user $(id -u):$(id -g) --group-add users --shm-size=8g -p 8888:8888 -v ~/home/user/homeWorkDirectory:/remoteWorkDirectory -w /remoteWorkDirectory ime:tag python -script_based_flags my_script.py
 ```
 
 ### Development in container
-
+Path to dockerfile `/developmentInContainer/Dockerfile`. How a container environment could be setup for development if you need to use your data in several different environments. 
 ```
 Project
 │   README.md
 │
-├───start-docker
-│       Dockerfile
-|       req.txt
-│
 ├───data
 |     |     some_data.txt
-|     ├─── ...
+|     ├──   ...
 │
 ├───code
-|      |     script.py
-|      ├─── ...
+|     |     script.py
+|     ├──   ...
+|     ├──   start-docker
+|     │     |     Dockerfile
+|     |     ├──   req.txt
+|     |     ...
 ```
-
+Docker run jupyter lab for code editing: 
+```
+docker run -it --rm --user $(id -u):$(id -g) --group-add users && \
+-p 8888:8888 && \
+-v /home/user/CodeDirectory:/workspace/code && \
+-v /home/user/DataDirectory:/workspace/data && \
+-w /remoteWorkDirectory ime:tag && \
+jupyter lab --no-browser --ip=0.0.0.0 --port=8888
+```
 
 ## Docker Image and Singularity
 
